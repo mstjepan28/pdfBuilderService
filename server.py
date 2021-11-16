@@ -1,8 +1,8 @@
 from PyPDF2 import PdfFileWriter, PdfFileReader
 import io
 import os
+from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 import aiohttp
@@ -28,18 +28,18 @@ async def postTemplate(request):
     #############################################
     #############################################
     
+    width, height = A4
+    
     packet = io.BytesIO()
-
-    width, height = letter
-    can = canvas.Canvas(packet, pagesize=letter)
+    
+    can = canvas.Canvas(packet, pagesize=A4, bottomup=0)
     can.setFillColorRGB(0, 0, 0)
     
     for item in mockData:
         for selection in data["selectionList"]:
+            position = normalisePositionData(selection["positionData"], A4)
+            can.drawString(position["x"], position["y"]+10, item.get(selection["variable"]))
             
-            
-            position = selection["positionData"]
-            can.drawString(position["x"], height-position["y"], item.get(selection["variable"]))
         #return
         can.save()
         
@@ -47,6 +47,7 @@ async def postTemplate(request):
         new_pdf = PdfFileReader(packet)
 
         existing_pdf = PdfFileReader(open("blankTemplate.pdf", "rb"))
+        print(existing_pdf.getPage(0).mediaBox)
         output = PdfFileWriter()
 
         page = existing_pdf.getPage(0)
@@ -61,9 +62,19 @@ async def postTemplate(request):
 
         return web.json_response({"attachment_url": "http://0.0.0.0:8080/public/" + pdf_name})
 
+def normalisePositionData(positionData, canvasSize):
+    width, height = canvasSize
+    
+    return {
+        "x": positionData["x"] * width,
+        "y": positionData["y"] * height,
+        "width": positionData["width"] * width,
+        "height": positionData["height"] * height,
+    }
+
 if not os.path.exists("public"):
     os.makedirs("public")
-    
+
 def run():
     global app
 

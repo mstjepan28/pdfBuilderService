@@ -12,56 +12,99 @@ from urllib import parse
 import base64
 from hashlib import blake2b
 
+
+# Load modckData thats used for testing
 import json
 
 file = open("mockData-10.json",)
 mockData = json.load(file)
 file.close()
 
+
 app = None
 routes = web.RouteTableDef()
 
-
 @routes.post("/postTemplate")
 async def postTemplate(request):
-    data = await request.json()
-    #############################################
-    #############################################
-    
-    width, height = A4
-    
-    packet = io.BytesIO()
-    
-    can = canvas.Canvas(packet, pagesize=A4, bottomup=0)
-    can.setFillColorRGB(0, 0, 0)
+    data = await multipartFormReader(request) 
+    pdfTemplate = readPdfTemplate(data["pdfTemplate"])
+        
+    return web.json_response({}) ############################## 
     
     for item in mockData:
+        packet = io.BytesIO()
+        can = canvas.Canvas(packet, pagesize=A4, bottomup=0)
+        can.setFillColorRGB(0, 0, 0)
+        
         for selection in data["selectionList"]:
             position = normalisePositionData(selection["positionData"], A4)
             can.drawString(position["x"], position["y"]+10, item.get(selection["variable"]))
             
-        #return
         can.save()
         
         packet.seek(0)
-        new_pdf = PdfFileReader(packet)
-
-        existing_pdf = PdfFileReader(open("blankTemplate.pdf", "rb"))
-        print(existing_pdf.getPage(0).mediaBox)
+        newPdf = PdfFileReader(packet)
+        
+        templatePage = pdfTemplate.getPage(0)
+        templatePage.mergePage(newPdf.getPage(0))
+        
         output = PdfFileWriter()
-
-        page = existing_pdf.getPage(0)
-        page.mergePage(new_pdf.getPage(0))
-        output.addPage(page)
+        output.addPage(templatePage)
 
         pdf_name = f"{item['first_name']}.pdf"
 
         outputStream = open("public/" + pdf_name, "wb")
         output.write(outputStream)
         outputStream.close()
+        
+    return web.json_response({})
 
-        return web.json_response({"attachment_url": "http://0.0.0.0:8080/public/" + pdf_name})
+# Read and decode parts of the multipart form
+async def multipartFormReader(request):
+    reader = aiohttp.MultipartReader.from_response(request)
+    requestData = {}
+    
+    while True:
+        # Get next form part
+        part = await reader.next()
+        
+        if part is None:
+            break
+        
+        # Get the JSON list of instructions on how to fill the PDF template
+        elif part.headers['Content-Type'] == "application/octet-stream":
+            byteArrayResult = await part.read(decode=True)
+            jsonValue = byteArrayResult.decode('utf8').replace("'", '"')
+            
+            requestData["selectionList"] = json.loads(jsonValue)
+            
+        # Get the PDF template
+        elif part.headers['Content-Type'] == "application/pdf":
+            requestData["pdfTemplate"] = await part.read(decode=True)
+                
+    return requestData
 
+
+##################################################################################################
+##################################################################################################
+
+def readPdfTemplate(pdfTemplateByteArray):
+    pdfTemplateBytes = bytes(pdfTemplateByteArray)
+    
+    pdfTemplate = None
+    
+    with io.BytesIO(pdfTemplateBytes) as pdfFile:
+        readPDF = PdfFileReader(pdfFile)
+        pdfTemplate = readPDF.getPage(0)
+    
+    return pdfTemplate    
+
+##################################################################################################
+##################################################################################################
+
+
+# This PDF and the one on the frontend do not match in dimensions so the positionData is offset. 
+#  To fix that the positionData is the percentage of the width/height of the PDF
 def normalisePositionData(positionData, canvasSize):
     width, height = canvasSize
     
@@ -95,10 +138,6 @@ def run():
         cors.add(route)
 
     return app
-
-
-async def serve():
-    return run()
 
 if __name__ == "__main__":
     app = run()

@@ -1,4 +1,4 @@
-from PyPDF2 import PdfFileWriter, PdfFileReader
+from PyPDF2 import PdfFileWriter, PdfFileReader, pdf
 import io
 import os
 from reportlab.lib.pagesizes import A4
@@ -12,6 +12,8 @@ from urllib import parse
 import base64
 from hashlib import blake2b
 
+import pikepdf
+import copy
 
 # Load modckData thats used for testing
 import json
@@ -28,8 +30,8 @@ routes = web.RouteTableDef()
 async def postTemplate(request):
     data = await multipartFormReader(request) 
     pdfTemplate = readPdfTemplate(data["pdfTemplate"])
-        
-    return web.json_response({}) ############################## 
+    
+    print(type(pdfTemplate))
     
     for item in mockData:
         packet = io.BytesIO()
@@ -44,8 +46,8 @@ async def postTemplate(request):
         
         packet.seek(0)
         newPdf = PdfFileReader(packet)
-        
-        templatePage = pdfTemplate.getPage(0)
+                
+        templatePage = getPageCopy(pdfTemplate.getPage(0), A4)
         templatePage.mergePage(newPdf.getPage(0))
         
         output = PdfFileWriter()
@@ -56,8 +58,19 @@ async def postTemplate(request):
         outputStream = open("public/" + pdf_name, "wb")
         output.write(outputStream)
         outputStream.close()
-        
+    
     return web.json_response({})
+
+
+# If this wasnt used, each drawing operation would overlay on top of eachother 
+def getPageCopy(page, canvasSize):
+    width, height = canvasSize
+    
+    pageCopy = pdf.PageObject.createBlankPage(None, width, height)
+    pageCopy.mergePage(page)
+    
+    return pageCopy
+
 
 # Read and decode parts of the multipart form
 async def multipartFormReader(request):
@@ -81,26 +94,22 @@ async def multipartFormReader(request):
         # Get the PDF template
         elif part.headers['Content-Type'] == "application/pdf":
             requestData["pdfTemplate"] = await part.read(decode=True)
-                
+                    
     return requestData
 
 
-##################################################################################################
-##################################################################################################
-
 def readPdfTemplate(pdfTemplateByteArray):
-    pdfTemplateBytes = bytes(pdfTemplateByteArray)
+    fileName = "temp.pdf"
     
-    pdfTemplate = None
+    tempFile = open(fileName, "wb")
+    tempFile.write(pdfTemplateByteArray)
+    tempFile.close()
     
-    with io.BytesIO(pdfTemplateBytes) as pdfFile:
-        readPDF = PdfFileReader(pdfFile)
-        pdfTemplate = readPDF.getPage(0)
-    
-    return pdfTemplate    
+    pdf = pikepdf.open(fileName, allow_overwriting_input=True)
+    pdf.save(fileName)
+        
+    return PdfFileReader(open(fileName, "rb")) 
 
-##################################################################################################
-##################################################################################################
 
 
 # This PDF and the one on the frontend do not match in dimensions so the positionData is offset. 

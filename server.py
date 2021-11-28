@@ -8,12 +8,10 @@ from reportlab.pdfbase.ttfonts import TTFont
 import aiohttp
 from aiohttp import web
 import aiohttp_cors
-from urllib import parse
-import base64
-from hashlib import blake2b
 
+import base64
 import pikepdf
-import copy
+import fitz
 
 # Load modckData thats used for testing
 import json
@@ -22,10 +20,29 @@ file = open("mockData-10.json",)
 mockData = json.load(file)
 file.close()
 
-
 app = None
 routes = web.RouteTableDef()
 
+@routes.post("/convertPdfToImg")
+async def convertPdfToImg(request):
+    data = await multipartFormReader(request)
+    pdfBytesArray = data["pdfTemplate"]
+    
+    file = open("temp.pdf", "wb")
+    file.write(pdfBytesArray)
+    file.close()
+    
+    pdfDoc = fitz.open("temp.pdf")
+    pdfPage = pdfDoc.load_page(0)
+    image = pdfPage.get_pixmap()
+    image.save("public/images/output.png")
+    
+    return web.json_response({
+        "attachment_url": "http://localhost:8080/public/images/output.png"
+    })
+        
+    
+    
 @routes.post("/postTemplate")
 async def postTemplate(request):
     data = await multipartFormReader(request) 
@@ -109,7 +126,6 @@ def readPdfTemplate(pdfTemplateByteArray):
     pdf.save(fileName)
         
     return PdfFileReader(open(fileName, "rb")) 
-
 
 
 # This PDF and the one on the frontend do not match in dimensions so the positionData is offset. 

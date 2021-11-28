@@ -1,7 +1,7 @@
 from PyPDF2 import PdfFileWriter, PdfFileReader, pdf
 import io
 import os
-from reportlab.lib.pagesizes import A4
+from reportlab.lib.pagesizes import A4, letter
 from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -40,23 +40,24 @@ async def convertPdfToImg(request):
     return web.json_response({
         "attachment_url": "http://localhost:8080/public/images/output.png"
     })
-        
-    
-    
+   
 @routes.post("/postTemplate")
 async def postTemplate(request):
     data = await multipartFormReader(request) 
     pdfTemplate = readPdfTemplate(data["pdfTemplate"])
     
-    print(type(pdfTemplate))
+    if pdfTemplate == None: return web.json_response({})
+    
+    pdfSizeDict = data["pdfSize"]
+    pdfSize = (pdfSizeDict["width"], pdfSizeDict["height"])
     
     for item in mockData:
         packet = io.BytesIO()
-        can = canvas.Canvas(packet, pagesize=A4, bottomup=0)
+        can = canvas.Canvas(packet, pagesize=pdfSize, bottomup=0)
         can.setFillColorRGB(0, 0, 0)
         
         for selection in data["selectionList"]:
-            position = normalisePositionData(selection["positionData"], A4)
+            position = normalisePositionData(selection["positionData"], pdfSize)
             can.drawString(position["x"], position["y"]+10, item.get(selection["variable"]))
             
         can.save()
@@ -64,7 +65,7 @@ async def postTemplate(request):
         packet.seek(0)
         newPdf = PdfFileReader(packet)
                 
-        templatePage = getPageCopy(pdfTemplate.getPage(0), A4)
+        templatePage = getPageCopy(pdfTemplate.getPage(0), pdfSize)
         templatePage.mergePage(newPdf.getPage(0))
         
         output = PdfFileWriter()
@@ -102,12 +103,19 @@ async def multipartFormReader(request):
             break
         
         # Get the JSON list of instructions on how to fill the PDF template
-        elif part.headers['Content-Type'] == "application/octet-stream":
+        elif part.headers['Content-Type'] == "application/json":
             byteArrayResult = await part.read(decode=True)
+            
             jsonValue = byteArrayResult.decode('utf8').replace("'", '"')
+            jsonData = json.loads(jsonValue)
             
-            requestData["selectionList"] = json.loads(jsonValue)
+            formPartName = part.headers["Content-Disposition"].split(" ")[2]
             
+            if formPartName == 'filename="selectionList"':
+                requestData["selectionList"] = jsonData
+            elif formPartName == 'filename="pdfDimensions"':
+                requestData["pdfSize"] = jsonData
+                
         # Get the PDF template
         elif part.headers['Content-Type'] == "application/pdf":
             requestData["pdfTemplate"] = await part.read(decode=True)
@@ -116,16 +124,11 @@ async def multipartFormReader(request):
 
 
 def readPdfTemplate(pdfTemplateByteArray):
-    fileName = "temp.pdf"
+    if len(pdfTemplateByteArray) <= 4:
+        return PdfFileReader(open("fallback.pdf", "rb"))    
     
-    tempFile = open(fileName, "wb")
-    tempFile.write(pdfTemplateByteArray)
-    tempFile.close()
-    
-    pdf = pikepdf.open(fileName, allow_overwriting_input=True)
-    pdf.save(fileName)
-        
-    return PdfFileReader(open(fileName, "rb")) 
+    pdfDoc = io.BytesIO(pdfTemplateByteArray)    
+    return PdfFileReader(pdfDoc)
 
 
 # This PDF and the one on the frontend do not match in dimensions so the positionData is offset. 

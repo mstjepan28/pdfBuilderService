@@ -23,6 +23,14 @@ file.close()
 app = None
 routes = web.RouteTableDef()
 
+@routes.get("/variables")
+async def getValiables(request):
+    variables = list(mockData[0].keys())
+    
+    return web.json_response({
+        "variables": variables 
+    })
+
 @routes.post("/convertPdfToImg")
 async def convertPdfToImg(request):
     data = await multipartFormReader(request)
@@ -124,7 +132,8 @@ async def multipartFormReader(request):
 
 
 def readPdfTemplate(pdfTemplateByteArray):
-    if len(pdfTemplateByteArray) <= 4:
+    # No PDF template was sent
+    if len(pdfTemplateByteArray) <= 4: 
         return PdfFileReader(open("fallback.pdf", "rb"))    
     
     pdfDoc = io.BytesIO(pdfTemplateByteArray)    

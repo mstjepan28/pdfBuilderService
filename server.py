@@ -1,13 +1,16 @@
-from PyPDF2 import PdfFileWriter, PdfFileReader, pdf
-import io
-import os
-from reportlab.lib.pagesizes import A4, letter
-from reportlab.pdfgen import canvas
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
 import aiohttp
 from aiohttp import web
 import aiohttp_cors
+
+import io
+import os
+
+from PyPDF2 import PdfFileWriter, PdfFileReader, pdf
+from reportlab.pdfgen import canvas
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.platypus import Paragraph
+from reportlab.lib.styles import ParagraphStyle
 
 import base64
 import pikepdf
@@ -51,12 +54,12 @@ async def convertPdfToImg(request):
    
 @routes.post("/postTemplate")
 async def postTemplate(request):
-    data = await multipartFormReader(request) 
-    pdfTemplate = readPdfTemplate(data["pdfTemplate"])
+    receivedData = await multipartFormReader(request) 
+    pdfTemplate = readPdfTemplate(receivedData["pdfTemplate"])
     
     if pdfTemplate == None: return web.json_response({})
     
-    pdfSizeDict = data["pdfSize"]
+    pdfSizeDict = receivedData["pdfSize"]
     pdfSize = (pdfSizeDict["width"], pdfSizeDict["height"])
     
     for item in mockData:
@@ -64,9 +67,19 @@ async def postTemplate(request):
         can = canvas.Canvas(packet, pagesize=pdfSize, bottomup=0)
         can.setFillColorRGB(0, 0, 0)
         
-        for selection in data["selectionList"]:
+        for selection in receivedData["selectionList"]:
+            content = getContent(item, selection)
             position = normalisePositionData(selection["positionData"], pdfSize)
-            can.drawString(position["x"], position["y"]+10, item.get(selection["variable"]))
+            
+            if(selection["type"] == "singlelineText"):
+                handleText(can, position, content)
+            elif(selection["type"] == "paragraph"):
+                handleParagraph(can, position, content)
+            elif(selection["type"] == "image"):
+                handleImage(can, position, content)
+            
+            else:
+                handleText(can, position, content)
             
         can.save()
         
@@ -79,13 +92,37 @@ async def postTemplate(request):
         output = PdfFileWriter()
         output.addPage(templatePage)
 
-        pdf_name = f"{item['first_name']}.pdf"
+        pdf_name = f"{item['student']}.pdf"
 
         outputStream = open("public/" + pdf_name, "wb")
         output.write(outputStream)
         outputStream.close()
     
     return web.json_response({})
+
+
+def getContent(item, selection):
+    if selection["staticContent"]:
+        return str(selection["staticContent"])
+    
+    return str(item.get(selection["variable"]))
+
+
+def handleText(can, position, content):
+    can.drawString(position["x"], position["y"]+10, content)
+
+
+def handleParagraph(can, position, content):
+    textStyle = ParagraphStyle('Normal')
+    
+    paragraphContent = Paragraph(content, style=textStyle)
+    paragraphContent.wrap(position["width"], position["height"])
+    
+    paragraphContent.drawOn(can, position["x"], position["y"])
+
+
+def handleImage(can, position, content):
+    pass
 
 
 # If this wasnt used, each drawing operation would overlay on top of eachother 

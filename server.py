@@ -70,6 +70,9 @@ async def postTemplate(request):
             content = getContent(item, selection)
             position = normalisePositionData(selection["positionData"], pdfSize)
             
+            if not content: 
+                continue
+            
             can.rect(position["x"], position["y"], position["width"], position["height"]) # ----------------- DEBUGING -----------------
             
             if(selection["type"] == "singlelineText"):
@@ -99,17 +102,23 @@ async def postTemplate(request):
     return web.json_response({})
 
 
+# Return static content or content based on the given variable if no static
+#   content is given
 def getContent(item, selection):
     if selection["staticContent"]:
-        return str(selection["staticContent"])
+        content = selection["staticContent"]
+    else:
+        content = item.get(selection["variable"])
     
-    return str(item.get(selection["variable"]))
+    return False if content == None else str(content)
 
 
+# Draw single line text on the canvas
 def handleText(can, position, content):
-    can.drawString(position["x"], position["y"]+10, content)
+    can.drawString(position["x"], position["y"] + 10, content)
 
 
+# Draw a paragraph and make sure it breaks/aligns correctly
 def handleParagraph(can, position, content):
     paragraphContent = Paragraph(content)
     xCord, yCord = paragraphContent.wrap(position["width"], position["height"])
@@ -118,12 +127,10 @@ def handleParagraph(can, position, content):
     
     paragraphContent.drawOn(can, position["x"], position["y"] - yOffset)
 
-
+# Read the image as a URL or a base64 and draw it on the canvas. Because of the 
+#   bottomUp=0 the images get drawn upside down so we fix that
 def handleImage(can, position, content):
-    if isinstance(content, str): # Handels links
-        image = ImageReader(content)
-    else: # Handels Bytes
-        image = io.BytesIO(content)
+    image = ImageReader(content)
     
     can.saveState()
     

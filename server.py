@@ -4,6 +4,10 @@ import aiohttp_cors
 
 import io
 import os
+import json
+import base64
+import pikepdf
+import fitz
 
 from PyPDF2 import PdfFileWriter, PdfFileReader, pdf
 from reportlab.pdfgen import canvas
@@ -11,14 +15,10 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import Paragraph
 from reportlab.lib.styles import ParagraphStyle
+from reportlab.lib.utils import ImageReader
 
-import base64
-import pikepdf
-import fitz
 
 # Load modckData thats used for testing
-import json
-
 file = open("mockData-10.json",)
 mockData = json.load(file)
 file.close()
@@ -57,9 +57,8 @@ async def postTemplate(request):
     receivedData = await multipartFormReader(request) 
     pdfTemplate = readPdfTemplate(receivedData["pdfTemplate"])
     
-    if pdfTemplate == None: return web.json_response({})
-    
     pdfSizeDict = receivedData["pdfSize"]
+    
     pdfSize = (pdfSizeDict["width"], pdfSizeDict["height"])
     
     for item in mockData:
@@ -71,15 +70,14 @@ async def postTemplate(request):
             content = getContent(item, selection)
             position = normalisePositionData(selection["positionData"], pdfSize)
             
+            can.rect(position["x"], position["y"], position["width"], position["height"]) # ----------------- DEBUGING -----------------
+            
             if(selection["type"] == "singlelineText"):
                 handleText(can, position, content)
             elif(selection["type"] == "paragraph"):
                 handleParagraph(can, position, content)
             elif(selection["type"] == "image"):
                 handleImage(can, position, content)
-            
-            else:
-                handleText(can, position, content)
             
         can.save()
         
@@ -113,19 +111,31 @@ def handleText(can, position, content):
 
 
 def handleParagraph(can, position, content):
-    textStyle = ParagraphStyle('Normal')
+    paragraphContent = Paragraph(content)
+    xCord, yCord = paragraphContent.wrap(position["width"], position["height"])
     
-    paragraphContent = Paragraph(content, style=textStyle)
-    paragraphContent.wrap(position["width"], position["height"])
+    yOffset = yCord - 16
     
-    paragraphContent.drawOn(can, position["x"], position["y"])
+    paragraphContent.drawOn(can, position["x"], position["y"] - yOffset)
 
 
 def handleImage(can, position, content):
-    pass
+    if isinstance(content, str): # Handels links
+        image = ImageReader(content)
+    else: # Handels Bytes
+        image = io.BytesIO(content)
+    
+    can.saveState()
+    
+    can.translate(position["x"], position["y"])
+    can.scale(1,-1)
+    
+    can.drawImage(image, 0, 0, position["width"], -position["height"], mask='auto')
+    
+    can.restoreState()
 
 
-# If this wasnt used, each drawing operation would overlay on top of eachother 
+# Used to prevent drawing operations from overlay on top of eachother 
 def getPageCopy(page, canvasSize):
     width, height = canvasSize
     

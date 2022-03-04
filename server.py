@@ -5,9 +5,11 @@ import aiohttp_cors
 import io
 import os
 import json
+import time
 import base64
 import pikepdf
 import fitz
+import uuid
 
 from PyPDF2 import PdfFileWriter, PdfFileReader, pdf
 from reportlab.pdfgen import canvas
@@ -18,13 +20,20 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.utils import ImageReader
 
 
-# Load modckData thats used for testing
+# Load mockData thats used for testing
 file = open("mockData-10.json",)
 mockData = json.load(file)
 file.close()
 
 app = None
+port = 5500
 routes = web.RouteTableDef()
+
+@routes.get("/generateUUID")
+async def generateUUID(request):
+    return web.json_response({
+        "id": str(uuid.uuid4()) 
+    })
 
 @routes.get("/variables")
 async def getValiables(request):
@@ -37,7 +46,9 @@ async def getValiables(request):
 @routes.post("/convertPdfToImg")
 async def convertPdfToImg(request):
     data = await multipartFormReader(request)
+    
     pdfBytesArray = data["pdfTemplate"]
+    fileName = data["templateInfo"]["id"]
     
     file = open("temp.pdf", "wb")
     file.write(pdfBytesArray)
@@ -46,10 +57,11 @@ async def convertPdfToImg(request):
     pdfDoc = fitz.open("temp.pdf")
     pdfPage = pdfDoc.load_page(0)
     image = pdfPage.get_pixmap()
-    image.save("public/images/output.png")
+    image.save(f"public/images/{fileName}.png")
     
     return web.json_response({
-        "attachment_url": "http://localhost:8080/public/images/output.png"
+        "fileName": fileName,
+        "attachment_url": f"http://localhost:{port}/public/images/{fileName}.png"
     })
    
 @routes.post("/postTemplate")
@@ -58,6 +70,7 @@ async def postTemplate(request):
     pdfTemplate = readPdfTemplate(receivedData["pdfTemplate"])
     
     pdfSizeDict = receivedData["pdfSize"]
+    print(pdfSizeDict)
     
     pdfSize = (pdfSizeDict["width"], pdfSizeDict["height"])
     
@@ -68,12 +81,12 @@ async def postTemplate(request):
         
         for selection in receivedData["selectionList"]:
             content = getContent(item, selection)
-            position = normalisePositionData(selection["positionData"], pdfSize)
+            position = normalizePositionData(selection["positionData"], pdfSize)
             
             if not content: 
                 continue
             
-            can.rect(position["x"], position["y"], position["width"], position["height"]) # ----------------- DEBUGING -----------------
+            #can.rect(position["x"], position["y"], position["width"], position["height"]) # ----------------- DEBUGING -----------------
             
             if(selection["type"] == "singlelineText"):
                 handleText(can, position, content)
@@ -177,6 +190,9 @@ async def multipartFormReader(request):
                 requestData["selectionList"] = jsonData
             elif formPartName == 'filename="pdfDimensions"':
                 requestData["pdfSize"] = jsonData
+            elif formPartName == 'filename="templateInfo"':
+                requestData["templateInfo"] = jsonData
+                
                 
         # Get the PDF template
         elif part.headers['Content-Type'] == "application/pdf":
@@ -196,7 +212,7 @@ def readPdfTemplate(pdfTemplateByteArray):
 
 # This PDF and the one on the frontend do not match in dimensions so the positionData is offset. 
 #  To fix that the positionData is the percentage of the width/height of the PDF
-def normalisePositionData(positionData, canvasSize):
+def normalizePositionData(positionData, canvasSize):
     width, height = canvasSize
     
     return {
@@ -232,4 +248,4 @@ def run():
 
 if __name__ == "__main__":
     app = run()
-    web.run_app(app, port=8080)
+    web.run_app(app, port=port)

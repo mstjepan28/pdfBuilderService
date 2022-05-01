@@ -52,6 +52,15 @@ def deleteTemplate(templateId):
     return True
   else:
     return False
+  
+@db_session
+def updateTemplate(templateId, updatedTemplate):
+  template = Template.get(id=templateId)
+  template.set(**updatedTemplate)
+  
+@db_session
+def getTemplateCount():
+  return select(t for t in Template).count()
 
 def setupDatabase():
   if not os.path.isdir("database"):

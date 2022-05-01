@@ -8,6 +8,7 @@ import base64
 import pikepdf
 import fitz
 import uuid
+import time
 
 import database
 from generatePdfFiles import fileGenerator
@@ -18,17 +19,54 @@ port = 5500
 database.setupDatabase()
 routes = web.RouteTableDef()
 
+# TODO: remove this eventually
+def getTestingData():
+  with open("mockData-10.json", 'r') as jsonFile:
+    jsonData = json.load(jsonFile)
+    return jsonData
+
 @routes.post("/postTemplate")
 async def postTemplate(request):
-  templateData = await multipartFormReader(request) 
-  fileGenerator(templateData)
+  templateData = await multipartFormReader(request)
+  generateWithData = getTestingData()
+  
+  fileGenerator(templateData, generateWithData)
   
   return web.json_response({})
 
 
 @routes.get("/previewData")
 async def previewData(request):
-  return web.json_response(mockData[0])
+  template = getTestingData()[0]
+  return web.json_response(template)
+
+###############################################################################
+
+@routes.post("/templates")
+async def templates(request):
+  data = await multipartFormReader(request)
+  template = data["template"]
+  
+  template["baseTemplateId"] = f"{template['id']}.pdf" if data["pdfTemplate"] else None
+  template["createdBy"] = "TODO: get user here"
+  template["createdAt"] = str(time.time() * 1000)
+  template["updatedAt"] = str(time.time() * 1000)
+  
+  database.addTemplate(template)
+  
+  return web.json_response(template)
+
+
+@routes.put("/templates")
+async def templates(request):
+  data = await multipartFormReader(request)
+  template = data["template"]
+  
+  template["updatedAt"] = str(time.time() * 1000)
+  
+  database.updateTemplate(template["id"], template)
+  
+  return web.json_response(template)
 
 
 @routes.get("/templates")
@@ -50,6 +88,7 @@ async def deleteTemplate(request):
   
   return web.json_response({"success": success})
 
+###############################################################################
 
 @routes.get("/generateUUID")
 async def generateUUID(request):
@@ -92,7 +131,6 @@ async def multipartFormReader(request):
     if part is None:
       break
     
-    # Get the JSON list of instructions on how to fill the PDF template
     elif part.headers['Content-Type'] == "application/json":
       byteArrayResult = await part.read(decode=True)
       
@@ -101,8 +139,8 @@ async def multipartFormReader(request):
       
       formPartName = part.headers["Content-Disposition"].split(" ")[2]
       
-      if formPartName == 'filename="selectionList"':
-        requestData["selectionList"] = jsonData
+      if formPartName == 'filename="template"':
+        requestData["template"] = jsonData
       elif formPartName == 'filename="pdfDimensions"':
         requestData["pdfSize"] = jsonData
       elif formPartName == 'filename="templateInfo"':
@@ -114,6 +152,7 @@ async def multipartFormReader(request):
 
   return requestData
 
+###############################################################################
 
 if not os.path.exists("public"):
   os.makedirs("public")
@@ -143,4 +182,4 @@ def run():
 
 if __name__ == "__main__":
   app = run()
-  web.run_app(app, port=5500)
+  web.run_app(app, port=port)

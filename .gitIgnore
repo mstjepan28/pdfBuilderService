@@ -1,3 +1,5 @@
 env
 public/
 temp.pdf
+__pycache__
+database

@@ -8,6 +8,7 @@ DB = Database()
 class Template(DB.Entity):
   id = PrimaryKey(str, auto=False)
   base_template_id = Optional(str, nullable=True)
+  pdf_dimensions = Required(Json)
 
   created_by = Required(str)
   created_at = Required(str)
@@ -22,6 +23,7 @@ def addTemplate(template):
   Template(
     id = template["id"],
     base_template_id = template["baseTemplateId"],
+    pdf_dimensions = template["pdfDimensions"],
 
     created_by = template["createdBy"],
     created_at = template["createdAt"],
@@ -38,10 +40,23 @@ def getAllTemplates():
   templates = select(t for t in Template)
   return [t.to_dict() for t in templates]
 
+
 @db_session
 def getTemplateById(templateId):
   template = Template.get(id=templateId)
   return template.to_dict() if template else None
+
+
+@db_session
+def updateTemplate(templateId, updatedTemplate):
+  template = Template.get(id=templateId)
+  
+  template.pdf_dimensions = updatedTemplate["pdfDimensions"]
+  template.name = updatedTemplate["name"]
+  template.tags = updatedTemplate["tags"]
+  template.selection_list = updatedTemplate["selectionList"]
+  template.updated_at = str(datetime.now())
+
 
 @db_session
 def deleteTemplate(templateId):
@@ -52,15 +67,6 @@ def deleteTemplate(templateId):
     return True
   else:
     return False
-  
-@db_session
-def updateTemplate(templateId, updatedTemplate):
-  template = Template.get(id=templateId)
-  template.set(**updatedTemplate)
-  
-@db_session
-def getTemplateCount():
-  return select(t for t in Template).count()
 
 def setupDatabase():
   if not os.path.isdir("database"):

@@ -9,6 +9,7 @@ import pikepdf
 import fitz
 import uuid
 import time
+from datetime import datetime
 
 import database
 from generatePdfFiles import fileGenerator
@@ -49,8 +50,8 @@ async def templates(request):
   
   template["baseTemplateId"] = f"{template['id']}.pdf" if data["pdfTemplate"] else None
   template["createdBy"] = "TODO: get user here"
-  template["createdAt"] = str(time.time() * 1000)
-  template["updatedAt"] = str(time.time() * 1000)
+  template["createdAt"] = str(datetime.now())
+  template["updatedAt"] = str(datetime.now())
   
   database.addTemplate(template)
   

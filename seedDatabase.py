@@ -96,6 +96,10 @@ def seedDatabase():
     template = {
       "id": str(uuid.uuid4()),
       "baseTemplateId": str(uuid.uuid4()) if actionWillExecute(0.80) else None,
+      "pdfDimensions": {
+        "width": 596, 
+        "height": 842
+      },
       
       "createdBy": randomString(20),
       "createdAt": str(time.time() * 1000),

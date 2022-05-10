@@ -41,6 +41,7 @@ async def previewData(request):
   template = getTestingData()[0]
   return web.json_response(template)
 
+
 ###############################################################################
 
 @routes.post("/templates")
@@ -55,7 +56,7 @@ async def templates(request):
   
   database.addTemplate(template)
   
-  savePdfTemplateFile(data["pdfTemplate"], f"{template['id']}.pdf")
+  savePdfTemplateFile(data["pdfTemplate"], str(template['id']))
   
   return web.json_response(template)
 
@@ -105,7 +106,6 @@ async def convertPdfToImg(request):
   data = await multipartFormReader(request)
   
   pdfBytesArray = data["pdfTemplate"]
-  fileName = data["templateInfo"]["id"]
   
   file = open("temp.pdf", "wb")
   file.write(pdfBytesArray)
@@ -114,22 +114,29 @@ async def convertPdfToImg(request):
   pdfDoc = fitz.open("temp.pdf")
   pdfPage = pdfDoc.load_page(0)
   image = pdfPage.get_pixmap()
-  image.save(f"public/images/{fileName}.png")
+  
+  templateDir = templateDirectoryExist(data["templateInfo"]["id"])
+  filePath = f"{templateDir}/background.png"
+  image.save(filePath)
   
   return web.json_response({
-    "fileName": fileName,
-    "attachment_url": f"http://localhost:{port}/public/images/{fileName}.png"
+    "attachment_url": f"http://localhost:{port}/{filePath}"
   })
 
 
 def savePdfTemplateFile(pdfTemplate, fileName):
-  if not os.path.exists("public/templates"):
-    os.makedirs("public/templates")
+  templateDirectoryExist(fileName)
   
-  file = open(f"public/templates/{fileName}", "wb")
+  file = open(f"{filePath}/{fileName}.pdf", "wb")
   file.write(pdfTemplate)
   file.close()
 
+def templateDirectoryExist(templateId):
+  filePath = f"public/templates/{templateId}"
+  if not os.path.exists(filePath):
+    os.makedirs(filePath)
+  
+  return filePath
 
 # Read and decode parts of the multipart form
 async def multipartFormReader(request):

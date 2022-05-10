@@ -55,6 +55,8 @@ async def templates(request):
   
   database.addTemplate(template)
   
+  savePdfTemplateFile(data["pdfTemplate"], f"{template['id']}.pdf")
+  
   return web.json_response(template)
 
 
@@ -118,6 +120,15 @@ async def convertPdfToImg(request):
     "fileName": fileName,
     "attachment_url": f"http://localhost:{port}/public/images/{fileName}.png"
   })
+
+
+def savePdfTemplateFile(pdfTemplate, fileName):
+  if not os.path.exists("public/templates"):
+    os.makedirs("public/templates")
+  
+  file = open(f"public/templates/{fileName}", "wb")
+  file.write(pdfTemplate)
+  file.close()
 
 
 # Read and decode parts of the multipart form

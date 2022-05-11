@@ -90,6 +90,8 @@ async def deleteTemplate(request):
   templateId = request.rel_url.query.get("id")
   success = database.deleteTemplate(templateId)
   
+  deleteTemplateDirectory(templateId)
+  
   return web.json_response({"success": success})
 
 ###############################################################################
@@ -125,7 +127,7 @@ async def convertPdfToImg(request):
 
 
 def savePdfTemplateFile(pdfTemplate, fileName):
-  templateDirectoryExist(fileName)
+  filePath = templateDirectoryExist(fileName)
   
   file = open(f"{filePath}/{fileName}.pdf", "wb")
   file.write(pdfTemplate)
@@ -137,6 +139,16 @@ def templateDirectoryExist(templateId):
     os.makedirs(filePath)
   
   return filePath
+
+def deleteTemplateDirectory(templateId):
+  filePath = f"public/templates/{templateId}"
+  if not os.path.exists(filePath):
+    return
+
+  for file in os.listdir(filePath):
+    os.remove(f"{filePath}/{file}")
+  
+  os.rmdir(filePath)
 
 # Read and decode parts of the multipart form
 async def multipartFormReader(request):

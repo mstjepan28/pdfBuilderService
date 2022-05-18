@@ -16,10 +16,13 @@ class Template(DB.Entity):
 
   name = Required(str)
   tags = Required(StrArray)
+  variable_list = Required(Json)
+  
   selection_list = Required(Json)
 
 @db_session
 def addTemplate(template):
+  print(template, template["variableList"])
   Template(
     id = template["id"],
     base_template_id = template["baseTemplateId"],
@@ -31,6 +34,7 @@ def addTemplate(template):
 
     name = template["name"],
     tags = template["tags"],
+    variable_list = template["variableList"],
 
     selection_list = template["selectionList"]
   )

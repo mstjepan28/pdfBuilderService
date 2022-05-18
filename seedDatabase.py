@@ -84,6 +84,18 @@ def createSelectionList(maxLength):
     
   return selectionList
 
+def randomVariableList(maxLength):
+  variableList = []
+  rand = random.randint(1, maxLength)
+  
+  for i in range(rand):
+    variableList.append({
+      "name": randomString(15),
+      "type": random.choice(["singleLineText", "paragraph", "image"])
+    })
+    
+  return variableList
+
 # --- # --- # --- # --- # --- # --- # --- #
 
 def seedDatabase():
@@ -107,6 +119,7 @@ def seedDatabase():
     
       "name": randomString(15),
       "tags": randomListFromList(tagsList, 5),
+      "variableList": randomVariableList(5),
       
       "selectionList": createSelectionList(7),
     }

@@ -22,7 +22,6 @@ class Template(DB.Entity):
 
 @db_session
 def addTemplate(template):
-  print(template, template["variableList"])
   Template(
     id = template["id"],
     base_template_id = template["baseTemplateId"],
@@ -59,6 +58,7 @@ def updateTemplate(templateId, updatedTemplate):
   template.name = updatedTemplate["name"]
   template.tags = updatedTemplate["tags"]
   template.selection_list = updatedTemplate["selectionList"]
+  template.variable_list = updatedTemplate["variableList"]
   template.updated_at = str(datetime.now())
 
 

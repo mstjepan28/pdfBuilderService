@@ -15,7 +15,6 @@ class Template(DB.Entity):
   updated_at = Required(str)
 
   name = Required(str)
-  tags = Required(StrArray)
   variable_list = Required(Json)
   
   selection_list = Required(Json)
@@ -32,7 +31,6 @@ def addTemplate(template):
     updated_at = template["updatedAt"],
 
     name = template["name"],
-    tags = template["tags"],
     variable_list = template["variableList"],
 
     selection_list = template["selectionList"]
@@ -56,7 +54,6 @@ def updateTemplate(templateId, updatedTemplate):
   
   template.pdf_dimensions = updatedTemplate["pdfDimensions"]
   template.name = updatedTemplate["name"]
-  template.tags = updatedTemplate["tags"]
   template.selection_list = updatedTemplate["selectionList"]
   template.variable_list = updatedTemplate["variableList"]
   template.updated_at = str(datetime.now())

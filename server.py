@@ -27,15 +27,6 @@ def getTestingData():
     jsonData = json.load(jsonFile)
     return jsonData
 
-@routes.post("/postTemplate")
-async def postTemplate(request):
-  templateData = await multipartFormReader(request)
-  generateWithData = getTestingData()
-  
-  fileGenerator(templateData, generateWithData)
-  
-  return web.json_response({})
-
 
 @routes.get("/previewData")
 async def previewData(request):
@@ -105,6 +96,19 @@ async def getGeneratedFileNames(request):
   return web.json_response(fileList)
 
 
+@routes.post("/templates/{id}/files/generate")
+async def generateFiles(request):
+  templateId = request.match_info.get("id")
+  
+  template = database.getTemplateById(templateId)
+  mockData = getTestingData()
+  
+  fileGenerator(template, mockData)
+  fileList = getGeneratedFiles(templateId)
+  
+  return web.json_response(fileList)
+  
+
 @routes.post("/templates/{id}/files")
 async def getGeneratedFiles(request):
   templateId = request.match_info.get("id")
@@ -161,7 +165,6 @@ async def convertPdfToImg(request):
   return web.json_response({
     "attachment_url": f"http://localhost:{port}/{filePath}"
   })
-
 
 ###############################################################################
 

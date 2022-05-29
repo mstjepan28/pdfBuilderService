@@ -10,17 +10,19 @@ import io
 import time
 
 def fileGenerator(templateData, generateWithData):
-  pdfTemplate = readPdfTemplate(templateData["pdfTemplate"])
+  pdfTemplate = readPdfTemplate(templateData)
   
-  pdfSizeDict = templateData["pdfSize"]
+  pdfSizeDict = templateData["pdf_dimensions"]
   pdfSize = (pdfSizeDict["width"], pdfSizeDict["height"])
   
+  # for every object in the data array
   for item in generateWithData:
     packet = io.BytesIO()
     can = canvas.Canvas(packet, pagesize=pdfSize, bottomup=0)
     can.setFillColorRGB(0, 0, 0)
     
-    for selection in templateData["selectionList"]:
+    # for every selection made on the template
+    for selection in templateData["selection_list"]:
       content = getContent(item, selection)
       position = normalizePositionData(selection["positionData"], pdfSize)
       
@@ -48,11 +50,21 @@ def fileGenerator(templateData, generateWithData):
     output = PdfFileWriter()
     output.addPage(templatePage)
     
-    pdf_name = f"{item['student']}.pdf"
+    pdfSavePath = f"public/{templateData['id']}/generated/{item['student']}.pdf"
 
-    outputStream = open("public/" + pdf_name, "wb")
+    outputStream = open(pdfSavePath, "wb")
     output.write(outputStream)
     outputStream.close()
+
+
+def readPdfTemplate(templateData):
+  templateId = templateData["id"]
+  baseTemplate = templateData["base_template_id"]
+  
+  if not baseTemplate:
+    return PdfFileReader(open("fallback.pdf", "rb"))
+  
+  return PdfFileReader(open(f"public/{templateId}/{baseTemplate}", "rb"))
 
 
 # Return static content or content based on the given variable if no static
@@ -104,14 +116,6 @@ def getPageCopy(page, canvasSize):
   pageCopy.mergePage(page)
   
   return pageCopy
-
-def readPdfTemplate(pdfTemplateByteArray):
-  # No PDF template was sent
-  if len(pdfTemplateByteArray) <= 4: 
-    return PdfFileReader(open("fallback.pdf", "rb"))
-  
-  pdfDoc = io.BytesIO(pdfTemplateByteArray)
-  return PdfFileReader(pdfDoc)
 
 
 # This PDF and the one on the frontend do not match in dimensions so the positionData is offset. 

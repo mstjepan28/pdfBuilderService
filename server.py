@@ -120,6 +120,17 @@ async def getGeneratedFiles(request):
   
   return responseFile
 
+
+@routes.post("/templates/{id}/files/remove")
+async def deleteGeneratedFiles(request):
+  templateId = request.match_info.get("id")
+  data = await request.json()
+  fileList = data["fileList"]
+  
+  deleteGeneratedFiles(templateId, fileList)
+  
+  return web.json_response({"success": True})
+
 ###############################################################################
 
 @routes.get("/generateUUID")
@@ -151,7 +162,21 @@ async def convertPdfToImg(request):
     "attachment_url": f"http://localhost:{port}/{filePath}"
   })
 
+
 ###############################################################################
+
+def deleteGeneratedFiles(templateId, fileList):
+  filePath = f"./public/{templateId}/generated"
+  
+  curWrkDir = os.getcwd()
+  os.chdir(filePath)
+  
+  for file in os.listdir():
+    if file in fileList:
+      os.remove(file)
+
+  os.chdir(curWrkDir)
+
 
 def zipTemplateFiles(templateId, fileList):
   filePath = f"./public/{templateId}/generated"
@@ -177,11 +202,7 @@ def getGeneratedFiles(templateId):
     os.makedirs(filePath)
     return []
   
-  fileList = []
-  for file in os.listdir(filePath):
-    fileList.append(file)
-  
-  return fileList 
+  return os.listdir(filePath)
 
 
 def savePdfTemplateFile(pdfTemplate, fileName):

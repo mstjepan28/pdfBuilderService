@@ -2,15 +2,16 @@ import aiohttp
 from aiohttp import web
 import aiohttp_cors
 
-import os
+import os 
 import json
 import base64
-import pikepdf
-import fitz
-import uuid
-import time
+import pikepdf # background image
+import fitz # background image
+import uuid # generating ids
+import time 
 from datetime import datetime
-from zipfile import ZipFile
+from zipfile import ZipFile # files
+import shutil # files
 
 import database
 from generatePdfFiles import fileGenerator
@@ -80,8 +81,13 @@ async def templates(request):
 @routes.delete("/templates")
 async def deleteTemplate(request):
   templateId = request.rel_url.query.get("id")
-  success = database.deleteTemplate(templateId)
+  isNew = request.rel_url.query.get("isNew")
   
+  if not isNew:
+    success = database.deleteTemplate(templateId)
+  else:
+    success = True
+    
   deleteTemplateDirectory(templateId)
   
   return web.json_response({"success": success})
@@ -229,10 +235,7 @@ def deleteTemplateDirectory(templateId):
   if not os.path.exists(filePath):
     return
 
-  for file in os.listdir(filePath):
-    os.remove(f"{filePath}/{file}")
-  
-  os.rmdir(filePath)
+  shutil.rmtree(filePath)  
 
 
 # Read and decode parts of the multipart form

@@ -65,7 +65,7 @@ async def templates(request):
   if data["pdfTemplate"]:
     template["baseTemplateId"] = f"{template['id']}.pdf"
     savePdfTemplateFile(data["pdfTemplate"], str(template['id']))
-  else:
+  elif not template["baseTemplateId"]:
     template["baseTemplateId"] = None
   
   template["updatedAt"] = str(time.time() * 1000)

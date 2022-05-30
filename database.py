@@ -52,6 +52,7 @@ def getTemplateById(templateId):
 def updateTemplate(templateId, updatedTemplate):
   template = Template.get(id=templateId)
   
+  template.base_template_id = updatedTemplate["baseTemplateId"]
   template.pdf_dimensions = updatedTemplate["pdfDimensions"]
   template.name = updatedTemplate["name"]
   template.selection_list = updatedTemplate["selectionList"]

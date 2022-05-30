@@ -42,14 +42,17 @@ async def templates(request):
   data = await multipartFormReader(request)
   template = data["template"]
   
-  template["baseTemplateId"] = f"{template['id']}.pdf" if data["pdfTemplate"] else None
+  if data["pdfTemplate"]:
+    template["baseTemplateId"] = f"{template['id']}.pdf"
+    savePdfTemplateFile(data["pdfTemplate"], str(template['id']))
+  else:
+    template["baseTemplateId"] = None
+    
   template["createdBy"] = "TODO: get user here"
   template["createdAt"] = str(datetime.now())
   template["updatedAt"] = str(datetime.now())
   
   database.addTemplate(template)
-  
-  savePdfTemplateFile(data["pdfTemplate"], str(template['id']))
   
   return web.json_response(template)
 
@@ -58,6 +61,12 @@ async def templates(request):
 async def templates(request):
   data = await multipartFormReader(request)
   template = data["template"]
+  
+  if data["pdfTemplate"]:
+    template["baseTemplateId"] = f"{template['id']}.pdf"
+    savePdfTemplateFile(data["pdfTemplate"], str(template['id']))
+  else:
+    template["baseTemplateId"] = None
   
   template["updatedAt"] = str(time.time() * 1000)
   
@@ -267,7 +276,8 @@ async def multipartFormReader(request):
 
     # Get the PDF template
     elif part.headers['Content-Type'] == "application/pdf":
-      requestData["pdfTemplate"] = await part.read(decode=True)
+      decoded = await part.read(decode=True)
+      requestData["pdfTemplate"] = decoded if len(decoded) > 4 else None
 
   return requestData
 

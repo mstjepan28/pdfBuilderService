@@ -2,7 +2,7 @@ import aiohttp
 from aiohttp import web
 import aiohttp_cors
 
-import os 
+import os
 import json
 import base64
 import pikepdf # background image
@@ -10,10 +10,9 @@ import fitz # background image
 import uuid # generating ids
 import time 
 from datetime import datetime
-from zipfile import ZipFile # files
-import shutil # files
 
 import database
+import fileHandler
 from generatePdfFiles import fileGenerator
 
 app = None
@@ -44,7 +43,7 @@ async def templates(request):
   
   if data["pdfTemplate"]:
     template["baseTemplateId"] = f"{template['id']}.pdf"
-    savePdfTemplateFile(data["pdfTemplate"], str(template['id']))
+    fileHandler.savePdfTemplateFile(data["pdfTemplate"], str(template['id']))
   else:
     template["baseTemplateId"] = None
     
@@ -64,8 +63,8 @@ async def templates(request):
   
   if data["pdfTemplate"]:
     template["baseTemplateId"] = f"{template['id']}.pdf"
-    savePdfTemplateFile(data["pdfTemplate"], str(template['id']))
-  elif not template["baseTemplateId"]:
+    fileHandler.savePdfTemplateFile(data["pdfTemplate"], str(template['id']))
+  elif ("baseTemplateId" not in template.keys()) or (not template["baseTemplateId"]):
     template["baseTemplateId"] = None
   
   template["updatedAt"] = str(time.time() * 1000)
@@ -97,7 +96,7 @@ async def deleteTemplate(request):
   else:
     success = True
     
-  deleteTemplateDirectory(templateId)
+  fileHandler.deleteTemplateDirectory(templateId)
   
   return web.json_response({"success": success})
 
@@ -107,7 +106,7 @@ async def deleteTemplate(request):
 async def getGeneratedFileNames(request):
   templateId = request.match_info.get("id")
   
-  fileList = getGeneratedFiles(templateId)
+  fileList = fileHandler.getGeneratedFiles(templateId)
   return web.json_response(fileList)
 
 
@@ -119,7 +118,7 @@ async def generateFiles(request):
   mockData = getTestingData()
   
   fileGenerator(template, mockData)
-  fileList = getGeneratedFiles(templateId)
+  fileList = fileHandler.getGeneratedFiles(templateId)
   
   return web.json_response(fileList)
   
@@ -133,7 +132,7 @@ async def getGeneratedFiles(request):
   responseFile = None
   
   if len(fileList) > 1:
-    responseFile = zipTemplateFiles(templateId, fileList)
+    responseFile = fileHandler.zipTemplateFiles(templateId, fileList)
   else:
     responseFile = web.FileResponse(f"public/{templateId}/generated/{fileList[0]}")
   
@@ -146,7 +145,7 @@ async def deleteGeneratedFiles(request):
   data = await request.json()
   fileList = data["fileList"]
   
-  deleteGeneratedFiles(templateId, fileList)
+  fileHandler.deleteGeneratedFiles(templateId, fileList)
   
   return web.json_response({"success": True})
 
@@ -173,7 +172,7 @@ async def convertPdfToImg(request):
   pdfPage = pdfDoc.load_page(0)
   image = pdfPage.get_pixmap()
   
-  templateDir = templateDirectoryExist(data["templateInfo"]["id"])
+  templateDir = fileHandler.templateDirectoryExist(data["templateInfo"]["id"])
   filePath = f"{templateDir}/background.png"
   image.save(filePath)
   
@@ -182,69 +181,6 @@ async def convertPdfToImg(request):
   })
 
 ###############################################################################
-
-def deleteGeneratedFiles(templateId, fileList):
-  filePath = f"./public/{templateId}/generated"
-  
-  curWrkDir = os.getcwd()
-  os.chdir(filePath)
-  
-  for file in os.listdir():
-    if file in fileList:
-      os.remove(file)
-
-  os.chdir(curWrkDir)
-
-
-def zipTemplateFiles(templateId, fileList):
-  filePath = f"./public/{templateId}/generated"
-  zipFileName = f"../{templateId}.zip"
-  zipFilePath = f"./public/{templateId}/{templateId}.zip"
-  
-  curWrkDir = os.getcwd()
-  os.chdir(filePath)
-  
-  with ZipFile(zipFileName, 'w') as newZipFile:
-    for file in os.listdir():
-      if file in fileList:
-        newZipFile.write(file)
-
-  os.chdir(curWrkDir)
-
-  return web.FileResponse(zipFilePath)
-
-
-def getGeneratedFiles(templateId):
-  filePath = f"public/{templateId}/generated"
-  if not os.path.exists(filePath):
-    os.makedirs(filePath)
-    return []
-  
-  return os.listdir(filePath)
-
-
-def savePdfTemplateFile(pdfTemplate, fileName):
-  filePath = templateDirectoryExist(fileName)
-  
-  file = open(f"{filePath}/{fileName}.pdf", "wb")
-  file.write(pdfTemplate)
-  file.close()
-
-
-def templateDirectoryExist(templateId):
-  filePath = f"public/{templateId}"
-  if not os.path.exists(filePath):
-    os.makedirs(filePath)
-  
-  return filePath
-
-
-def deleteTemplateDirectory(templateId):
-  filePath = f"public/{templateId}"
-  if not os.path.exists(filePath):
-    return
-
-  shutil.rmtree(filePath)  
 
 
 # Read and decode parts of the multipart form

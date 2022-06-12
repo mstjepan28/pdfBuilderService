@@ -39,7 +39,15 @@ def getGeneratedFiles(templateId):
     os.makedirs(filePath)
     return []
   
-  return os.listdir(filePath)
+  curWrkDir = os.getcwd()
+  os.chdir(filePath)
+  
+  files = os.listdir()
+  files.sort(key=os.path.getctime)
+  
+  os.chdir(curWrkDir)
+  
+  return files[:10]
 
 
 def savePdfTemplateFile(pdfTemplate, fileName):

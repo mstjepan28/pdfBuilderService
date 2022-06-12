@@ -41,12 +41,17 @@ async def templateWithNameExists(request):
   templateName = request.rel_url.query.get("name")
   
   exists = database.templateWithNameExists(templateName)
+  print(templateName, exists)
   return web.json_response({ "exists": exists })
 
 @routes.post("/template")
 async def templates(request):
   data = await multipartFormReader(request)
   template = data["template"]
+  
+  nameTaken = database.templateWithNameExists(template["name"])
+  if nameTaken:
+    raise web.HTTPBadRequest(text=f"Name {template['name']} already taken")
   
   if data["pdfTemplate"]:
     template["baseTemplateId"] = f"{template['id']}.pdf"
@@ -67,6 +72,10 @@ async def templates(request):
 async def templates(request):
   data = await multipartFormReader(request)
   template = data["template"]
+  
+  nameTaken = database.templateWithNameExists(template["name"])
+  if nameTaken:
+    raise web.HTTPBadRequest(text=f"Name {template['name']} already taken")
   
   if data["pdfTemplate"]:
     template["baseTemplateId"] = f"{template['id']}.pdf"

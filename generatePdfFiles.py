@@ -8,6 +8,7 @@ from reportlab.lib.utils import ImageReader
 
 import io
 import time
+import uuid # generating ids
 
 def fileGenerator(templateData, generateWithData):
   pdfTemplate = readPdfTemplate(templateData)
@@ -30,7 +31,7 @@ def fileGenerator(templateData, generateWithData):
         continue
       
       # Used for debugging - draw a rectangle around the area where the text will be drawn
-      can.rect(position["x"], position["y"], position["width"], position["height"]) 
+      # can.rect(position["x"], position["y"], position["width"], position["height"]) 
       
       if(selection["type"] == "singlelineText"):
         handleText(can, position, content)
@@ -50,7 +51,7 @@ def fileGenerator(templateData, generateWithData):
     output = PdfFileWriter()
     output.addPage(templatePage)
     
-    pdfSavePath = f"public/{templateData['id']}/generated/{item['student']}.pdf"
+    pdfSavePath = f"public/{templateData['id']}/generated/{str(uuid.uuid4())}.pdf"
 
     outputStream = open(pdfSavePath, "wb")
     output.write(outputStream)
@@ -73,7 +74,10 @@ def getContent(item, selection):
   if selection["staticContent"]:
     content = selection["staticContent"]
   else:
-    content = item.get(selection["variable"])
+    try:
+      content = item.get(selection["variable"]["name"])
+    except:
+      content = None
   
   return False if content == None else str(content)
 

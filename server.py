@@ -36,7 +36,7 @@ async def previewData(request):
 
 ###############################################################################
 
-@routes.post("/templates")
+@routes.post("/template")
 async def templates(request):
   data = await multipartFormReader(request)
   template = data["template"]
@@ -56,7 +56,7 @@ async def templates(request):
   return web.json_response(template)
 
 
-@routes.put("/templates")
+@routes.put("/template")
 async def templates(request):
   data = await multipartFormReader(request)
   template = data["template"]
@@ -74,7 +74,7 @@ async def templates(request):
   return web.json_response(template)
 
 
-@routes.get("/templates")
+@routes.get("/template")
 async def templates(request):
   templateId = request.rel_url.query.get("id")
   
@@ -86,7 +86,7 @@ async def templates(request):
     return web.json_response(templates)
 
 
-@routes.delete("/templates")
+@routes.delete("/template")
 async def deleteTemplate(request):
   templateId = request.rel_url.query.get("id")
   isNew = request.rel_url.query.get("isNew")
@@ -102,7 +102,7 @@ async def deleteTemplate(request):
 
 ###############################################################################
 
-@routes.get("/templates/{id}/files")
+@routes.get("/template/{id}/file")
 async def getGeneratedFileNames(request):
   templateId = request.match_info.get("id")
   
@@ -110,7 +110,7 @@ async def getGeneratedFileNames(request):
   return web.json_response(fileList)
 
 
-@routes.post("/templates/{id}/files/generate")
+@routes.post("/template/{id}/file/generate")
 async def generateFiles(request):
   templateId = request.match_info.get("id")
   
@@ -123,7 +123,7 @@ async def generateFiles(request):
   return web.json_response(fileList)
   
 
-@routes.post("/templates/{id}/files")
+@routes.post("/template/{id}/file")
 async def getGeneratedFiles(request):
   templateId = request.match_info.get("id")
   data = await request.json()
@@ -139,7 +139,7 @@ async def getGeneratedFiles(request):
   return responseFile
 
 
-@routes.post("/templates/{id}/files/remove")
+@routes.post("/template/{id}/file/remove")
 async def deleteGeneratedFiles(request):
   templateId = request.match_info.get("id")
   data = await request.json()

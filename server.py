@@ -36,6 +36,13 @@ async def previewData(request):
 
 ###############################################################################
 
+@routes.get("/template/exists")
+async def templateWithNameExists(request):
+  templateName = request.rel_url.query.get("name")
+  
+  exists = database.templateWithNameExists(templateName)
+  return web.json_response({ "exists": exists })
+
 @routes.post("/template")
 async def templates(request):
   data = await multipartFormReader(request)
@@ -47,7 +54,7 @@ async def templates(request):
   else:
     template["baseTemplateId"] = None
     
-  template["createdBy"] = "TODO: get user here"
+  template["createdBy"] = "USER"
   template["createdAt"] = str(datetime.now())
   template["updatedAt"] = str(datetime.now())
   

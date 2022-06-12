@@ -14,7 +14,7 @@ class Template(DB.Entity):
   created_at = Required(str)
   updated_at = Required(str)
 
-  name = Required(str)
+  name = Required(str, unique=True)
   variable_list = Required(Json)
   
   selection_list = Required(Json)
@@ -47,6 +47,9 @@ def getTemplateById(templateId):
   template = Template.get(id=templateId)
   return template.to_dict() if template else None
 
+@db_session
+def templateWithNameExists(name):
+  return Template.exists(name=name)
 
 @db_session
 def updateTemplate(templateId, updatedTemplate):

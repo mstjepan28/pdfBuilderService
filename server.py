@@ -126,18 +126,19 @@ async def getGeneratedFileNames(request):
   return web.json_response(fileList)
 
 
-@routes.post("/template/{id}/file/generate")
+@routes.post("/template/{name}/file/generate")
 async def generateFiles(request):
-  templateId = request.match_info.get("id")
+  templateName = request.match_info.get("name")
   
-  template = database.getTemplateById(templateId)
-  mockData = getTestingData()
+  template = database.getTemplateByName(templateName)
+  data = await request.json()
   
-  fileGenerator(template, mockData)
-  fileList = fileHandler.getGeneratedFiles(templateId)
+  fileGenerator(template, data)
+  fileList = fileHandler.getGeneratedFiles(template["id"])
   
   return web.json_response(fileList)
-  
+
+
 
 @routes.post("/template/{id}/file")
 async def getGeneratedFiles(request):

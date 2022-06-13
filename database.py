@@ -47,9 +47,17 @@ def getTemplateById(templateId):
   template = Template.get(id=templateId)
   return template.to_dict() if template else None
 
+
+@db_session
+def getTemplateByName(templateName):
+  template = Template.get(name=templateName)
+  return template.to_dict() if template else None
+
+
 @db_session
 def templateWithNameExists(name):
   return Template.exists(name=name)
+
 
 @db_session
 def updateTemplate(templateId, updatedTemplate):

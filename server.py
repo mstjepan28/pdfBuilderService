@@ -73,8 +73,8 @@ async def templates(request):
   data = await multipartFormReader(request)
   template = data["template"]
   
-  nameTaken = database.templateWithNameExists(template["name"])
-  if nameTaken:
+  templateId = database.templateWithNameExists(template["name"], getTemplateId=True)
+  if templateId and templateId != template["id"]:
     raise web.HTTPBadRequest(text=f"Name {template['name']} already taken")
   
   if data["pdfTemplate"]:

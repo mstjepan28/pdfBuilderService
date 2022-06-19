@@ -21,20 +21,6 @@ port = 5500
 database.setupDatabase()
 routes = web.RouteTableDef()
 
-# TODO: remove this eventually
-def getTestingData():
-  with open("mockData-10.json", 'r') as jsonFile:
-    jsonData = json.load(jsonFile)
-    return jsonData
-
-
-@routes.get("/previewData")
-async def previewData(request):
-  template = getTestingData()[0]
-  return web.json_response(template)
-
-
-###############################################################################
 
 @routes.get("/template/exists")
 async def templateWithNameExists(request):

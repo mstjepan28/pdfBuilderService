@@ -10,17 +10,23 @@ import io
 import time
 import uuid # generating ids
 
+FONT_SIZE = 14
+
 def fileGenerator(templateData, generateWithData):
   pdfTemplate = readPdfTemplate(templateData)
   
   pdfSizeDict = templateData["pdf_dimensions"]
   pdfSize = (pdfSizeDict["width"], pdfSizeDict["height"])
   
+  pdfmetrics.registerFont(TTFont('Arial', 'Arial.ttf'))
+  
   # for every object in the data array
   for item in generateWithData:
     packet = io.BytesIO()
     can = canvas.Canvas(packet, pagesize=pdfSize, bottomup=0)
+    
     can.setFillColorRGB(0, 0, 0)
+    can.setFont("Arial", FONT_SIZE)
     
     # for every selection made on the template
     for selection in templateData["selection_list"]:
@@ -31,7 +37,7 @@ def fileGenerator(templateData, generateWithData):
         continue
       
       # Used for debugging - draw a rectangle around the area where the text will be drawn
-      # can.rect(position["x"], position["y"], position["width"], position["height"]) 
+      can.rect(position["x"], position["y"], position["width"], position["height"]) 
       
       if(selection["type"] == "singlelineText"):
         handleText(can, position, content)
@@ -84,16 +90,22 @@ def getContent(item, selection):
 
 # Draw single line text on the canvas
 def handleText(can, position, content):
-  can.drawString(position["x"], position["y"] + 10, content)
+  can.drawString(position["x"], position["y"] + FONT_SIZE, content)
 
 
 # Draw a paragraph and make sure it breaks/aligns correctly
 def handleParagraph(can, position, content):
-  paragraphContent = Paragraph(content)
+  # Create a paragraph style
+  style = ParagraphStyle(
+    'style',
+    fontName='Arial',
+    fontSize=FONT_SIZE,
+  )
+
+  paragraphContent = Paragraph(content, style=style)
   xCord, yCord = paragraphContent.wrap(position["width"], position["height"])
   
-  yOffset = yCord - 16
-  
+  yOffset = yCord - 28
   paragraphContent.drawOn(can, position["x"], position["y"] - yOffset)
 
 
@@ -105,7 +117,7 @@ def handleImage(can, position, content):
   can.saveState()
   
   can.translate(position["x"], position["y"])
-  can.scale(1,-1)
+  can.scale(1, -1)
   
   can.drawImage(image, 0, 0, position["width"], -position["height"], mask='auto')
   
